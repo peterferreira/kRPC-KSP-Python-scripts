@@ -11,10 +11,6 @@ from time import sleep
 import krpc
 import winsound
 
-    print('Não foi possível importar módulo simpleaudio,\n\
-caso você queira ouvir a contagem digite no cmd ou powershell: \n \
-pip install simpleaudio')
-
 # Definição de parâmetros do lançamento em metros
 iniciar_inclinacao = 500.0
 finalizar_inclinacao = 45000.0
