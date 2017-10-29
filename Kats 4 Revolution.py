@@ -9,15 +9,8 @@
 import math
 from time import sleep
 import krpc
-try:
-    import simpleaudio
-except:
-    try:
-        os.system('pip install simpleaudio')
-        del(os)
-        import simpleaudio
-    except:
-        pass
+import winsound
+
     print('Não foi possível importar módulo simpleaudio,\n\
 caso você queira ouvir a contagem digite no cmd ou powershell: \n \
 pip install simpleaudio')
@@ -278,8 +271,7 @@ t = tela()
 t.mensagem('Contagem regressiva')
 sleep(1)
 try:
-    contagem = simpleaudio.WaveObject.from_wave_file('./10-0_countdown.wav')
-    contagem.play()
+    winsound.PlaySound('10-0_countdown.wav', winsound.SND_FILENAME)
 except:
     pass
 
