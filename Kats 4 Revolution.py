@@ -277,7 +277,7 @@ for n in range(10, 0, -1):
 
 try:
     del(contagem)
-    del(simpleaudio)
+    del(winsound)
 except:
     pass
 
