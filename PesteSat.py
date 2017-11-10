@@ -257,6 +257,7 @@ def acencao(nave, altitude_alvo):
                     sleep(3)
                     nave.control.throttle = 1.0
                     coifa_separada = True
+                    t.mensagem('')
         ControleForcaG(nave)
 
         # Reduzir aceleração ao se aproximar da altitude alvo
@@ -335,7 +336,9 @@ def pousar(nave):
         if not nave.control.brakes:
             if altitude_mantis() < 50000:
                 nave.control.brakes = True
-                t.mensagem('Ligando os aerofreios')
+                t.mensagem('Ativando aerofreios')
+                sleep(2)
+                t.mensagem('')
         if not nave.control.gear:
             if velocidade_vertical_mantis() > -100 and altitude_mantis() < 500:
                 nave.control.gear = True
@@ -360,7 +363,7 @@ def ControlePouso(nave, velocidade_vertical, velocidade, altitude, massatotal, i
         except:
             zeraraceleracao = nave.control.throttle
         if atmosfera:
-            if velocidade() < 100:
+            if velocidade() < 30:
                 if velocidade_vertical() < -5 and velocidade_vertical() > -8:
                     nave.control.throttle = zeraraceleracao
                 elif velocidade_vertical() > -5:
