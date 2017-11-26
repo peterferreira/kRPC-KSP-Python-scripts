@@ -145,19 +145,16 @@ def queimar(nave, conn, manobra, tempo_queima, direcao):
         pass
     nave.control.throttle = 1.0
     if direcao == 'prograde':
-        sleep(tempo_queima - 0.5)
+        sleep(tempo_queima - 0.1)
     else:
-        sleep((-1 * tempo_queima) - 0.5)
+        sleep((-1 * tempo_queima) - 0.1)
     try:
         t.mensagem('Ajuste fino')
     except:
         pass
     nave.control.throttle = 0.05
     remaining_burn = conn.add_stream(manobra[0].remaining_burn_vector, manobra[0].reference_frame)
-    while remaining_burn()[1] > 0.5:
-        pass
-    nave.control.throttle = 0.01
-    while remaining_burn()[1] > 0.005:
+    while remaining_burn()[1] > 0.003:
         pass
     nave.control.throttle = 0.0
     del(remaining_burn)
@@ -168,7 +165,7 @@ def ControleForcaG(nave):
     if altitude() < 60000:
         if nave.flight(rf).g_force > 2.5:
             nave.control.throttle -= 0.001
-        elif nave.flight(rf).g_force < 0.5:
+        elif nave.flight(rf).g_force < 1.9:
             nave.control.throttle += 0.001
     else:
         nave.control.throttle = 1.0
@@ -208,18 +205,12 @@ def acencao(nave, altitude_alvo):
                 t.mensagem('Inclinando')
 
         # Reduzir potência para a força G não aloprar
-        if altitude() < 70000:
-            if altitude() < 60000:
-                if nave.flight().g_force > 2.:
-                    nave.control.throttle = nave.control.throttle - 0.001
-                elif nave.flight().g_force < 1.9:
-                    nave.control.throttle = nave.control.throttle + 0.001
-            else:
-                nave.control.throttle = 1.0
+        if segundo_estagio_separado == False:
+            ControleForcaG(nave)
 
         # Separar primeiro e segundo estágio quando acabar o combustível
         if primeiro_estagio_separado == False:
-            if combustivel1() <= 1400.0:
+            if combustivel1() <= 1500.0:
                 t.mensagem('Separação 1º s')
                 nave.control.throttle = 0.0
                 sleep(1)
@@ -258,11 +249,10 @@ def acencao(nave, altitude_alvo):
                     nave.control.throttle = 1.0
                     coifa_separada = True
                     t.mensagem('')
-        ControleForcaG(nave)
 
         # Reduzir aceleração ao se aproximar da altitude alvo
-        if apoastro() > altitude_alvo * 0.98:
-            nave.control.throttle = 0.005
+        if apoastro() > altitude_alvo * 0.99:
+            nave.control.throttle = 0.05
             t.mensagem('Ajuste fino')
     # Desligar motor
     nave.control.throttle = 0.0
@@ -272,7 +262,7 @@ def acencao(nave, altitude_alvo):
     sleep(1)
     nave.auto_pilot.engage()
     sleep(1)
-    nave.auto_pilot.target_direction = (0, 1, 0)
+    nave.auto_pilot.target_pitch_and_heading(90 - angulo, 90)
     sleep(2)
 
 def lancamento(nave):
@@ -302,7 +292,7 @@ def circular_orbita(nave):
 def voltar(nave):
     global Mantis, t
     t.mensagem('Retorno 1º estágio')
-    sleep(3)
+    sleep(2)
     t.mensagem('Virando para o retrograde')
     ksc.active_vessel = Mantis
     nave = ksc.active_vessel
@@ -312,6 +302,7 @@ def voltar(nave):
     nave.control.sas = True
     sleep(2)
     nave.auto_pilot.sas_mode = ksc.SASMode.retrograde
+    sleep(3)
 
 def pousar(nave):
     global t, Mantis
@@ -323,6 +314,8 @@ def pousar(nave):
         nave.auto_pilot.sas_mode = ksc.SASMode.retrograde
     except:
         pass
+    sleep(5)
+    ksc.warp_to(ut() + 180)
 
     altitude_mantis = conn.add_stream(getattr, nave.flight(rf), 'surface_altitude')
     velocidade_mantis = conn.add_stream(getattr, nave.flight(rf), 'speed')
@@ -351,28 +344,43 @@ def pousar(nave):
     t.mensagem('')
     del(t)
 
+def calcula_gravidade(AltitudeNave, nave):
+    parametro_gravitacional = nave.orbit.body.gravitational_parameter
+    RaioAstro = nave.orbit.body.equatorial_radius
+    R = RaioAstro + AltitudeNave()
+    g = parametro_gravitacional / (R ** 2.)
+    return -g
+
+def calcula_queima_suicida(Velocidade, Impulso, Massa, altitude, nave):
+    global altitude_nivel_mar
+    margem_de_seguranca = 1.0 #se não está dando tempo de reduzir velocidade, tente entre 1.1 e 1.2
+    gravidade = calcula_gravidade(altitude, nave)
+    va = ((Impulso()/Massa()) + gravidade)
+    A = (Velocidade() ** 2) / (2 * va)
+    return A * margem_de_seguranca
+
 def ControlePouso(nave, velocidade_vertical, velocidade, altitude, massatotal, impulso, atmosfera = True):
-    if velocidade() > 50:
-        if altitude() <= (calcula_queima_suicida(velocidade, impulso, massatotal, altitude, nave) - velocidade()):
+    print(atmosfera, altitude(), (calcula_queima_suicida(velocidade, impulso, massatotal, altitude, nave) - velocidade_vertical()), velocidade(), -velocidade_vertical())
+    if altitude() < 3000:
+        if altitude() <= (calcula_queima_suicida(velocidade, impulso, massatotal, altitude, nave) - velocidade_vertical()):
             nave.control.throttle = 1.0
-            t.mensagem('Motor ligado')
-    else:
+
+    if velocidade_vertical() > -15:
         gravidade = calcula_gravidade(altitude, nave)
         try:
             zeraraceleracao = (massatotal() * -gravidade) / impulso()
         except:
             zeraraceleracao = nave.control.throttle
         if atmosfera:
-            if velocidade() < 30:
-                if velocidade_vertical() < -5 and velocidade_vertical() > -8:
+            if velocidade_vertical() > -15:
+                if velocidade_vertical() < -5 and velocidade_vertical() > -15:
                     nave.control.throttle = zeraraceleracao
                 elif velocidade_vertical() > -5:
                     nave.control.throttle = zeraraceleracao - 0.1
-                elif velocidade_vertical() < -8:
+                elif velocidade_vertical() < -10:
                     nave.control.throttle = zeraraceleracao + 0.1
-            t.mensagem('Lentamente...')
         else:
-            if altitude() > 90 and altitude() < 50:
+            if altitude() > 90 and altitude() < 300:
                 if velocidade_vertical() < -9 and velocidade_vertical() > -10:
                     nave.control.throttle = zeraraceleracao
                 elif velocidade_vertical() > -9:
@@ -386,14 +394,14 @@ def ControlePouso(nave, velocidade_vertical, velocidade, altitude, massatotal, i
                     nave.control.throttle = zeraraceleracao - 0.1
                 elif velocidade_vertical() < -6:
                     nave.control.throttle = zeraraceleracao + 0.1
-            elif altitude() > 15 and altitude() < 30:
+            elif altitude() > 20 and altitude() < 30:
                 if velocidade_vertical() < -1 and velocidade_vertical() > -3:
                     nave.control.throttle = zeraraceleracao
                 elif velocidade_vertical() > -1:
                     nave.control.throttle = zeraraceleracao - 0.1
                 elif velocidade_vertical() < -3:
                     nave.control.throttle = zeraraceleracao + 0.1
-            elif altitude() < 15:
+            elif altitude() < 20:
                 if velocidade_vertical() < -0.75 and velocidade_vertical() > -1.25:
                     nave.control.throttle = zeraraceleracao
                 elif velocidade_vertical() > -0.5:
@@ -401,27 +409,16 @@ def ControlePouso(nave, velocidade_vertical, velocidade, altitude, massatotal, i
                 elif velocidade_vertical() < -1.1:
                     nave.control.throttle = zeraraceleracao + 0.1
     try:
-        if altitude() > 100.0:
+        if velocidade_horizontal() > 300.0:
             if nave.control.sas_mode is not ksc.SASMode.retrograde:
                 nave.control.sas_mode = ksc.SASMode.retrograde
         else:
             if nave.control.sas_mode is not ksc.SASMode.radial:
                 nave.control.rcs = True
+                nave.control.sas_mode = ksc.SASMode.radial
                 nave.auto_pilot.sas_mode = ksc.SASMode.radial
     except:
         pass
-
-def calcula_queima_suicida(Velocidade, Impulso, Massa, altitude, nave):
-    # Tá, é meio roubo, mas não tá 100% perfeito ainda e precisava enviar antes da live.
-    margem_de_seguranca = 1.5 #se não está dando tempo de reduzir velocidade, tente entre 1.1 e 1.2
-    gravidade = calcula_gravidade(altitude, nave)
-    try:
-        va = ((Impulso()/Massa()) + gravidade)
-        A = (Velocidade() ** 2) / (2 * va)
-    except:
-        va = 1000.0
-        A = 0.5
-    return A * margem_de_seguranca
 
 def rendezvous(nave, target):
     # Não consegui terminar essa semana, é difícil demais,
