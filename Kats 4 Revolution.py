@@ -218,6 +218,7 @@ class tela():
     peinel = None
     retangulo = None
     texto = None
+
     def __init__(self):
         self.quadro = conn.ui.stock_canvas
         self.tamanho_tela = self.quadro.rect_transform.size
@@ -225,14 +226,14 @@ class tela():
         self.rect = self.painel.rect_transform
         self.rect.size = (self.rect.size[0] * 10, self.rect.size[1])
         self.texto = self.painel.add_text('')
-    
+
     def mensagem(self, text):
         try:
             self.texto.content = text
             self.texto.rect_transform.position = (0, -20)
             self.texto.color = (1, 1, 1)
             self.texto.size = 14
-            self.rect.position = (110 - (self.tamanho_tela[0]/4),0)
+            self.rect.position = (110 - (self.tamanho_tela[0] / 4), 0)
         except Exception as erro:
             print('Erro: %s' % erro)
 
@@ -267,7 +268,7 @@ t = tela()
 t.mensagem('Contagem regressiva')
 sleep(1)
 try:
-    winsound.PlaySound('10-0_countdown.wav', winsound.SND_FILENAME)
+    winsound.PlaySound('10-0_countdown.wav', winsound.SND_FILENAME | winsound.SND_ASYNC)
 except:
     pass
 
@@ -277,7 +278,7 @@ for n in range(10, 0, -1):
 
 try:
     del(contagem)
-    del(winsound)
+    del(simpleaudio)
 except:
     pass
 
@@ -353,6 +354,7 @@ tempo_queima = calcula_tempo_queima(manobra[1], vessel)
 
 orientar(manobra[0], vessel)
 sleep(6)
+
 acelerar_tempo_para_apoastro_queima(tempo_queima, vessel)
 
 # Executar queima
